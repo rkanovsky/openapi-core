@@ -16,7 +16,7 @@ class SchemaFactory(object):
     def create(self, schema_spec):
         schema_deref = self.dereferencer.dereference(schema_spec)
 
-        schema_type = schema_deref.get('type', None)
+        schema_type = schema_deref.get('type', 'object')
         schema_format = schema_deref.get('format')
         model = schema_deref.get('x-model', None)
         required = schema_deref.get('required', False)
@@ -29,7 +29,9 @@ class SchemaFactory(object):
         all_of_spec = schema_deref.get('allOf', None)
         one_of_spec = schema_deref.get('oneOf', None)
         additional_properties_spec = schema_deref.get('additionalProperties')
-
+        example = schema_deref.get('example', None)
+        minimum = schema_deref.get('minimum', None)
+        maximum = schema_deref.get('maximum', None)
         properties = None
         if properties_spec:
             properties = self.properties_generator.generate(properties_spec)
@@ -55,7 +57,7 @@ class SchemaFactory(object):
             items=items, schema_format=schema_format, required=required,
             default=default, nullable=nullable, enum=enum,
             deprecated=deprecated, all_of=all_of, one_of=one_of,
-            additional_properties=additional_properties,
+            additional_properties=additional_properties, example=example, minimum=minimum, maximum=maximum,
         )
 
     @property

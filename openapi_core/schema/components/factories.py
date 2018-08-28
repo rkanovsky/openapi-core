@@ -16,14 +16,14 @@ class ComponentsFactory(object):
         responses_spec = components_deref.get('responses', {})
         parameters_spec = components_deref.get('parameters', {})
         request_bodies_spec = components_deref.get('request_bodies', {})
-
+        security_schemes = components_deref.get('securitySchemes', {})
         schemas = self.schemas_generator.generate(schemas_spec)
         responses = self._generate_response(responses_spec)
         parameters = self._generate_parameters(parameters_spec)
         request_bodies = self._generate_request_bodies(request_bodies_spec)
         return Components(
             schemas=list(schemas), responses=responses, parameters=parameters,
-            request_bodies=request_bodies,
+            request_bodies=request_bodies, security_schemes=security_schemes,
         )
 
     @property

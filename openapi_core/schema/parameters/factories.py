@@ -13,14 +13,18 @@ class ParameterFactory(object):
 
         parameter_name = parameter_name or parameter_deref['name']
         parameter_in = parameter_deref.get('in', 'header')
-
         allow_empty_value = parameter_deref.get('allowEmptyValue')
         required = parameter_deref.get('required', False)
 
         style = parameter_deref.get('style')
         explode = parameter_deref.get('explode')
 
+
         schema_spec = parameter_deref.get('schema', None)
+        example = parameter_deref.get('example', None)
+        minimum = parameter_deref.get('minimum', None)
+        maximum = parameter_deref.get('maximum', None)
+
         schema = None
         if schema_spec:
             schema, _ = self.schemas_registry.get_or_create(schema_spec)
@@ -29,5 +33,5 @@ class ParameterFactory(object):
             parameter_name, parameter_in,
             schema=schema, required=required,
             allow_empty_value=allow_empty_value,
-            style=style, explode=explode,
+            style=style, explode=explode,example=example, minimum=minimum, maximum=maximum,
         )

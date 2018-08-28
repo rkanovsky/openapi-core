@@ -10,8 +10,7 @@ from openapi_core.extensions.models.factories import ModelFactory
 from openapi_core.schema.schemas.enums import SchemaFormat, SchemaType
 from openapi_core.schema.schemas.exceptions import (
     InvalidSchemaValue, UndefinedSchemaProperty, MissingSchemaProperty,
-    OpenAPISchemaError, NoOneOfSchema, MultipleOneOfSchema, NoValidSchema,
-    UndefinedItemsSchema,
+    OpenAPISchemaError, NoOneOfSchema, MultipleOneOfSchema,
 )
 from openapi_core.schema.schemas.util import (
     forcebool, format_date, format_datetime,
@@ -47,7 +46,7 @@ class Schema(object):
     }
 
     TYPE_VALIDATOR_CALLABLE_GETTER = {
-        SchemaType.ANY: lambda x: x,
+        None: lambda x: True,
         SchemaType.BOOLEAN: TypeValidator(bool),
         SchemaType.INTEGER: TypeValidator(integer_types, exclude=bool),
         SchemaType.NUMBER: TypeValidator(integer_types, float, exclude=bool),
@@ -61,8 +60,8 @@ class Schema(object):
             self, schema_type=None, model=None, properties=None, items=None,
             schema_format=None, required=None, default=None, nullable=False,
             enum=None, deprecated=False, all_of=None, one_of=None,
-            additional_properties=None):
-        self.type = SchemaType(schema_type)
+            additional_properties=None, example=None, minimum=None, maximum=None):
+        self.type = schema_type and SchemaType(schema_type)
         self.model = model
         self.properties = properties and dict(properties) or {}
         self.items = items
@@ -75,6 +74,10 @@ class Schema(object):
         self.all_of = all_of and list(all_of) or []
         self.one_of = one_of and list(one_of) or []
         self.additional_properties = additional_properties
+        self.example = example
+
+        self.minimum = minimum
+        self.maximum = maximum
 
         self._all_required_properties_cache = None
         self._all_optional_properties_cache = None
@@ -108,7 +111,7 @@ class Schema(object):
 
         return dict(
             (prop_name, val)
-            for prop_name, val in iteritems(all_properties)
+            for prop_name, val in all_properties.items()
             if prop_name in required
         )
 
@@ -125,7 +128,6 @@ class Schema(object):
         mapping = self.DEFAULT_CAST_CALLABLE_GETTER.copy()
         mapping.update({
             SchemaType.STRING: self._unmarshal_string,
-            SchemaType.ANY: self._unmarshal_any,
             SchemaType.ARRAY: self._unmarshal_collection,
             SchemaType.OBJECT: self._unmarshal_object,
         })
@@ -138,6 +140,9 @@ class Schema(object):
             if not self.nullable:
                 raise InvalidSchemaValue("Null value for non-nullable schema")
             return self.default
+
+        if self.type is None:
+            return value
 
         cast_mapping = self.get_cast_mapping()
 
@@ -155,8 +160,8 @@ class Schema(object):
     def unmarshal(self, value):
         """Unmarshal parameter from the value."""
         if self.deprecated:
-            warnings.warn("The schema is deprecated", DeprecationWarning)
-
+            warnings.warn(
+                "The schema is deprecated", DeprecationWarning)
         casted = self.cast(value)
 
         if casted is None and not self.required:
@@ -189,27 +194,7 @@ class Schema(object):
                     value, self.format)
             )
 
-    def _unmarshal_any(self, value):
-        types_resolve_order = [
-            SchemaType.OBJECT, SchemaType.ARRAY, SchemaType.BOOLEAN,
-            SchemaType.INTEGER, SchemaType.NUMBER, SchemaType.STRING,
-        ]
-        cast_mapping = self.get_cast_mapping()
-        for schema_type in types_resolve_order:
-            cast_callable = cast_mapping[schema_type]
-            try:
-                return cast_callable(value)
-            # @todo: remove ValueError when validation separated
-            except (OpenAPISchemaError, TypeError, ValueError):
-                continue
-
-        raise NoValidSchema(
-            "No valid schema found for value {0}".format(value))
-
     def _unmarshal_collection(self, value):
-        if self.items is None:
-            raise UndefinedItemsSchema("Undefined items' schema")
-
         return list(map(self.items.unmarshal, value))
 
     def _unmarshal_object(self, value, model_factory=None):
@@ -288,6 +273,8 @@ class Schema(object):
             SchemaType.ARRAY: self._validate_collection,
             SchemaType.STRING: self._validate_string,
             SchemaType.OBJECT: self._validate_object,
+            SchemaType.INTEGER: self._validate_number,
+            SchemaType.NUMBER: self._validate_number,
         }
 
         return defaultdict(lambda: lambda x: x, mapping)
@@ -402,3 +389,15 @@ class Schema(object):
             prop.validate(prop_value)
 
         return True
+
+    def _validate_number(self, value):
+        if self.minimum is not None:
+            if value < self.minimum:
+                'The :attribute value :input is not between :min - :max.',
+                raise InvalidSchemaValue( "The attribute value {0} is less than {1}".format(
+                    value, self.minimum))
+        if self.maximum is not None:
+            if value > self.maximum:
+                raise InvalidSchemaValue("The attribute value {0} is greater than {1}".format(
+                    value, self.maximum))
+        return

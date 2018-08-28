@@ -28,10 +28,11 @@ class Parameter(object):
     def __init__(
             self, name, location, schema=None, required=False,
             deprecated=False, allow_empty_value=False,
-            items=None, style=None, explode=None):
+            items=None, style=None, explode=None, example=None, minimum=None, maximum=None):
         self.name = name
         self.location = ParameterLocation(location)
         self.schema = schema
+        self.example = example
         self.required = (
             True if self.location == ParameterLocation.PATH else required
         )
@@ -43,6 +44,8 @@ class Parameter(object):
         self.items = items
         self.style = ParameterStyle(style or self.default_style)
         self.explode = self.default_explode if explode is None else explode
+        self.minimum = minimum
+        self.maximum = maximum
 
     @property
     def aslist(self):
